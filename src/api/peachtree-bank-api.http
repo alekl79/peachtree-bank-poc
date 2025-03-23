@@ -1,0 +1,121 @@
+@peachtree_bank_poc_HostAddress = http://localhost:5093
+
+GET {{peachtree_bank_poc_HostAddress}}/api/transactions/0195c47b-c7aa-787a-8a6a-bf932c57e479
+Accept: application/json
+
+### Freetext search and sorting
+GET {{peachtree_bank_poc_HostAddress}}/api/transactions/-10/10/?sortBy=Amount&sortDirection=asc
+Accept: application/json
+
+
+### Create Transaction
+POST {{peachtree_bank_poc_HostAddress}}/api/transactions
+Content-Type: application/json
+
+{
+  "fromAccount": "Desiro Industries",
+  "toAccount": "Flatline Hikers",
+  "amount": 1001.11
+}
+
+### Update Transaction State
+PUT {{peachtree_bank_poc_HostAddress}}/api/transactions/0195c47b-c7aa-76e7-a2bc-4cc840661cbd/state/2
+Accept: application/json
+
+
+### Bulk Create Transactions
+POST {{peachtree_bank_poc_HostAddress}}/api/transactions/bulk
+Content-Type: application/json
+
+[
+  {
+    "fromAccount": "GlobeTech",
+    "toAccount": "MegaMart",
+    "amount": 1234.56
+  },
+  {
+    "fromAccount": "ApexTraders",
+    "toAccount": "MarketDepot",
+    "amount": -500.25
+  },
+  {
+    "fromAccount": "BrightEnterprises",
+    "toAccount": "UrbanCo",
+    "amount": 78.0
+  },
+  {
+    "fromAccount": "NorthernSupplies",
+    "toAccount": "SilverExchange",
+    "amount": 99999.99
+  },
+  {
+    "fromAccount": "MidasCorp",
+    "toAccount": "GreenGrocer",
+    "amount": -200.45
+  },
+  {
+    "fromAccount": "UnityBanks",
+    "toAccount": "TitanConstruction",
+    "amount": 3000.0
+  },
+  {
+    "fromAccount": "SolarDynamics",
+    "toAccount": "OmniFoods",
+    "amount": -42.5
+  },
+  {
+    "fromAccount": "AtlasShipping",
+    "toAccount": "QuantumRetail",
+    "amount": 48.72
+  },
+  {
+    "fromAccount": "SkylineLogistics",
+    "toAccount": "TransGlobal",
+    "amount": 10000.0
+  },
+  {
+    "fromAccount": "EverestChemicals",
+    "toAccount": "FusionDeli",
+    "amount": -1234.99
+  },
+  {
+    "fromAccount": "BlueOcean",
+    "toAccount": "ZenithStores",
+    "amount": 150.75
+  },
+  {
+    "fromAccount": "TerraExports",
+    "toAccount": "EcoVision",
+    "amount": 12.34
+  },
+  {
+    "fromAccount": "RedStone",
+    "toAccount": "ClearBridge",
+    "amount": -100.0
+  },
+  {
+    "fromAccount": "CyberLink",
+    "toAccount": "TechMatrix",
+    "amount": 2450.0
+  },
+  {
+    "fromAccount": "PhotonicsCorp",
+    "toAccount": "NovaMarkets",
+    "amount": -123.456
+  },
+  {
+    "fromAccount": "EchoMarine",
+    "toAccount": "RiverTrade",
+    "amount": 999.99
+  },
+  {
+    "fromAccount": "FuturaFinance",
+    "toAccount": "AstraFood",
+    "amount": -450.0
+  },
+  {
+    "fromAccount": "PrimeMotion",
+    "toAccount": "MidlandSupplies",
+    "amount": 1.5
+  }
+]

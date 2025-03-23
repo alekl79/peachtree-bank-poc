@@ -23,7 +23,15 @@ builder.Services.AddValidatorsFromAssemblyContaining<TransferTransactionValidato
 // Add services to the DI container.
 builder.Services.AddOpenApi();
 builder.Services.ConfigureHttpJsonOptions(cfg => cfg.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
-
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowPeachtreeApp", builder =>
+    {
+        builder.WithOrigins("http://localhost:3000")
+               .AllowAnyMethod()
+               .AllowAnyHeader();
+    });
+});
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -47,7 +55,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
     app.MapOpenApi();
 }
-
+app.UseCors("AllowPeachtreeApp");
 app.UseHttpsRedirection();
 
 // GET a transaction details by Id
@@ -63,7 +71,7 @@ app.MapGet("api/transactions/{page:int}/{pageSize:int}", async (string? q, strin
     if (!string.IsNullOrEmpty(q))
     {
         var lowerQ = q.ToLower();
-        
+
         queryable = queryable.Where(t =>
             EF.Functions.Like(t.FromAccount.ToLower(), $"%{lowerQ}%") ||
             EF.Functions.Like(t.ToAccount.ToLower(), $"%{lowerQ}%"));
@@ -71,21 +79,39 @@ app.MapGet("api/transactions/{page:int}/{pageSize:int}", async (string? q, strin
     if (!string.IsNullOrEmpty(sortBy))
     {
         var order = string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase) ? "desc" : "asc";
-        queryable = queryable.OrderBy($"{sortBy} {order}");
+        if (sortBy.Equals(nameof(TransferTransaction.Amount), StringComparison.OrdinalIgnoreCase))
+        {
+            queryable = order == "desc"
+                ? queryable.OrderByDescending(t => t.Amount)
+                : queryable.OrderBy(t => t.Amount);
+        }
+        else
+        {
+            queryable = queryable.OrderBy($"{sortBy} {order}");
+        }
     }
     else
     {
         queryable = queryable.OrderByDescending(t => t.Created);
     }
+    var totalCount = await queryable.CountAsync();
+    var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
     var results = await queryable.Skip((page - 1)*pageSize).Take(pageSize).ToListAsync();
-    if (results.Count == 0)
+    var response = new
     {
-        return Results.NoContent();
-    }
-    else
-    {
-        return Results.Ok(results);
-    }
+        data = results,
+        currentPage = page,
+        totalPages,
+        pageSize,
+        activeFilters = new
+        {
+            q,
+            sortBy,
+            sortDirection
+        }
+    };
+
+    return totalCount == 0 ? Results.NoContent() : Results.Ok(response);
 });
  
 // POST: create a new transaction

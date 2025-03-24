@@ -11,9 +11,8 @@ using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Wolverine usage is required for WolverineFx.Http
 var connectionString = builder.Configuration["Peachtree:ConnectionString"];
-
+var corsDomain = builder.Configuration["CorsUi"];
 builder.Services.AddDbContext<TransactionStoreContext>(options =>
 {
     options.UseSqlite("Data Source=transactions.db");
@@ -30,15 +29,9 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowPeachtreeApp", builder =>
     {
-        builder.WithOrigins("http://localhost:3000")
+        builder.WithOrigins(corsDomain)
                .AllowAnyMethod()
                .AllowAnyHeader();
-    });
-    options.AddPolicy("AllowVercel", policy =>
-    {
-        policy.WithOrigins("https://peachtree-bank-app.vercel.app")
-              .AllowAnyMethod()
-              .AllowAnyHeader();
     });
 });
 builder.Services.AddHealthChecks();
@@ -116,7 +109,6 @@ using (var scope = app.Services.CreateScope())
     app.MapOpenApi();
 //}
 app.UseCors("AllowPeachtreeApp");
-app.UseCors("AllowVercel");
 app.UseHttpsRedirection();
 
 app.UseAuthentication();

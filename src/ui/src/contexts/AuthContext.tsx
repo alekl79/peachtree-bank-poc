@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
@@ -29,14 +29,14 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [sessionTimeout, setSessionTimeout] = useState<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const clearSessionTimeout = useCallback(() => {
-    if (sessionTimeout) {
-      clearTimeout(sessionTimeout);
-      setSessionTimeout(null);
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
-  }, [sessionTimeout]);
+  }, []);
 
   const logout = useCallback(async () => {
     clearSessionTimeout();
@@ -45,10 +45,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const setNewSessionTimeout = useCallback(() => {
     clearSessionTimeout();
-    const timeout = setTimeout(() => {
+    timeoutRef.current = setTimeout(() => {
       logout();
     }, 60 * 60 * 1000); // 1 hour in milliseconds
-    setSessionTimeout(timeout);
   }, [clearSessionTimeout, logout]);
 
   useEffect(() => {

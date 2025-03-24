@@ -39,12 +39,14 @@ jobs:
     - name: Test
       run: dotnet test ${{ env.WORKING_DIRECTORY }} --no-build
     - name: Publish
-      run: dotnet publish ${{ env.WORKING_DIRECTORY }} --configuration ${{ env.CONFIGURATION }} --no-build --output ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
-    - name: Install Swashbuckle CLI .NET Global Tool
-      run: dotnet tool install --global Swashbuckle.AspNetCore.Cli --version ${{ env.SWASHBUCLE_ASPNET_CORE_CLI_PACKAGE_VERSION }}
-      working-directory: ${{ env.WORKING_DIRECTORY }}
+      run: dotnet publish ${{ env.WORKING_DIRECTORY }} --configuration ${{ env.CONFIGURATION }} --no-build --output ${{ env.AZURE_WEBAPP_PACKAGE_PATH 
     - name: Generate Open API Specification Document
-      run: swagger tofile --output "${{ env.API_IMPORT_SPECIFICATION_PATH }}" "${{ env.API_IMPORT_DLL }}" --startupAssembly "peachtree-bank-api" "${{ env.API_IMPORT_VERSION }}"
+      run: |
+        ./peachtree-bank-api &
+        APP_PID=$!
+        sleep 5
+        curl http://localhost:5000/swagger/v1/swagger.json -o ${{ API_IMPORT_SPECIFICATION_PATH }}
+        kill $APP_PID
     - name: Publish Artifacts
       uses: actions/upload-artifact@v4
       with:

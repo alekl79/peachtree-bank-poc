@@ -36,7 +36,7 @@ builder.Services.AddCors(options =>
     });
     options.AddPolicy("AllowVercel", policy =>
     {
-        policy.WithOrigins("https://peachtree-bank-gtg4v3rra-johan-alexander-lynges-projects.vercel.app")
+        policy.WithOrigins("https://peachtree-bank-app.vercel.app")
               .AllowAnyMethod()
               .AllowAnyHeader();
     });

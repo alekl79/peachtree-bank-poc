@@ -79,3 +79,4 @@ yarn-error.log*
 # Firebase
 .env.local
 src/**/firebase.ts
+/src/ui/build

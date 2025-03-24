@@ -36,7 +36,7 @@ builder.Services.AddCors(options =>
     });
     options.AddPolicy("AllowVercel", policy =>
     {
-        policy.WithOrigins("https://your-vercel-app.vercel.app")
+        policy.WithOrigins("https://peachtree-bank-gtg4v3rra-johan-alexander-lynges-projects.vercel.app")
               .AllowAnyMethod()
               .AllowAnyHeader();
     });
@@ -111,7 +111,7 @@ using (var scope = app.Services.CreateScope())
 // Normally, we would only enable Swagger in Development/Test envs. But for this Poc, it is okay.
 //if (app.Environment.IsDevelopment())
 //{
-app.UseSwagger();
+    app.UseSwagger();
     app.UseSwaggerUI();
     app.MapOpenApi();
 //}

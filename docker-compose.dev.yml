@@ -1,0 +1,29 @@
+version: "3.8"
+
+services:
+  ui:
+    build:
+      context: ./src/ui/peachtree-bank-app
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - REACT_APP_API_URL=http://api:7080/api
+    volumes:
+      - ./src/ui/peachtree-bank-app:/app
+      - /app/node_modules
+    depends_on:
+      - api
+
+  api:
+    build:
+      context: ./src/api/peachtree-bank-api
+      dockerfile: Dockerfile.dev
+    ports:
+      - "7080:7080"
+    environment:
+      - ASPNETCORE_URLS=http://+:7080
+      - ASPNETCORE_ENVIRONMENT=Release
+    volumes:
+      - ./src/api/peachtree-bank-api:/app 

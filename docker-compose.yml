@@ -1,0 +1,40 @@
+version: "3.8"
+
+services:
+  ui:
+    build:
+      context: ./src/ui/
+      dockerfile: Dockerfile
+      args:
+        - REACT_APP_API_URL=http://localhost:7080/api
+    ports:
+      - "3005:80"
+    environment:
+      - NODE_ENV=production
+      - PORT=80
+    networks:
+      - app-network
+
+  api:
+    build:
+      context: ./src/api/
+      dockerfile: Dockerfile
+    ports:
+      - "7080:7080"
+    environment:
+      - ASPNETCORE_URLS=http://+:7080
+      - ASPNETCORE_ENVIRONMENT=Development
+      - UseHttpsRedirection=false
+      - CorsUi=http://localhost:3005
+      - DOCKER_RUNNING=true
+    volumes:
+      - sqlite-data:/app/data
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  sqlite-data:

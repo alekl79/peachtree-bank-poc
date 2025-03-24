@@ -98,7 +98,7 @@ export const fetchTransactions = async (
     const response = await apiClient.get<TransactionResponse>(
       `/transactions/${page}/${pageSize}?q=${q}&sortBy=${sortBy}&sortDirection=${sortDirection}`
     );
-    return response.data;
+    return response.data ?? [];
   } catch (error) {
     return handleApiError(error, 'Failed to fetch transactions');
   }

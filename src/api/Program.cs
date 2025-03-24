@@ -12,10 +12,15 @@ using System.Text.Json.Serialization;
 var builder = WebApplication.CreateBuilder(args);
 
 var connectionString = builder.Configuration["Peachtree:ConnectionString"];
-var corsDomain = builder.Configuration["CorsUi"];
+var corsDomain = builder.Configuration["CorsUi"] ?? "http://localhost:3000";
 builder.Services.AddDbContext<TransactionStoreContext>(options =>
 {
-    options.UseSqlite("Data Source=transactions.db");
+    // Use environment variable to determine if running in Docker
+    var dbPath = Environment.GetEnvironmentVariable("DOCKER_RUNNING") == "true" 
+        ? "data/transactions.db"
+        : "transactions.db";
+        
+    options.UseSqlite($"Data Source={dbPath}");
 });
 
 // Register FluentValidation
@@ -95,7 +100,7 @@ builder.Services.AddAuthorization();
 var app = builder.Build();
 app.UseCors("AllowPeachtreeApp");
 
-app.Logger.LogInformation("Configured cors for: {Url}", corsDomain);
+app.Logger.LogInformation("Configured CORS for: {Url}", corsDomain);
 // Ensure the database is created at startup
 using (var scope = app.Services.CreateScope())
 {
@@ -111,7 +116,10 @@ app.UseSwagger();
     app.MapOpenApi();
 //}
 
-app.UseHttpsRedirection();
+if (builder.Configuration.GetValue<bool>("UseHttpsRedirection", false))
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseAuthentication();
 app.UseAuthorization();

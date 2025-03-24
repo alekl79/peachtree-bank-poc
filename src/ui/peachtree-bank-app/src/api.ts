@@ -15,8 +15,12 @@ export interface Transaction {
   version: number;
 }
 
+console.log('API URL:', process.env.REACT_APP_API_URL);
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:7080/api';
+
 const apiClient = axios.create({
-  baseURL: 'https://localhost:7080/api',
+  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:7080/api',
   headers: {
     'Content-Type': 'application/json'
   }

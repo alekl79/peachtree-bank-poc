@@ -1,7 +1,9 @@
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using MicroElements.Swashbuckle.FluentValidation.AspNetCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using peachtree_bank_poc;
 using System.Linq.Dynamic.Core;
 using System.Text.Json.Serialization;
@@ -31,6 +33,12 @@ builder.Services.AddCors(options =>
                .AllowAnyMethod()
                .AllowAnyHeader();
     });
+    options.AddPolicy("AllowVercel", policy =>
+    {
+        policy.WithOrigins("https://your-vercel-app.vercel.app")
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
 });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -38,6 +46,23 @@ builder.Services.AddSwaggerGen(c =>
     c.SupportNonNullableReferenceTypes();
 });
 builder.Services.AddFluentValidationRulesToSwagger();
+
+// Firebase JWT Bearer Authentication
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.Authority = "https://securetoken.google.com/peachtree-bank-b3edd";
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = "https://securetoken.google.com/peachtree-bank-b3edd",
+            ValidateAudience = true,
+            ValidAudience = "peachtree-bank-b3edd",
+            ValidateLifetime = true
+        };
+    });
+
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
@@ -56,13 +81,18 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 app.UseCors("AllowPeachtreeApp");
+app.UseCors("AllowVercel");
 app.UseHttpsRedirection();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 // GET a transaction details by Id
 app.MapGet("api/transactions/{id}", async (Guid id, TransactionStoreContext db) =>
     await db.Transactions.FindAsync(id) is TransferTransaction transaction
         ? Results.Ok(transaction)
-        : Results.NotFound());
+        : Results.NotFound())
+    .RequireAuthorization();
 
 // Filter and page transactions
 app.MapGet("api/transactions/{page:int}/{pageSize:int}", async (string? q, string? sortBy, string? sortDirection, int page, int pageSize, TransactionStoreContext db) =>
@@ -112,7 +142,7 @@ app.MapGet("api/transactions/{page:int}/{pageSize:int}", async (string? q, strin
     };
 
     return totalCount == 0 ? Results.NoContent() : Results.Ok(response);
-});
+}).RequireAuthorization();
  
 // POST: create a new transaction
 app.MapPost("api/transactions", async (TransferTransaction transaction, TransactionStoreContext db, IValidator<TransferTransaction> validator) =>
@@ -130,7 +160,7 @@ app.MapPost("api/transactions", async (TransferTransaction transaction, Transact
     db.Transactions.Add(transaction);
     await db.SaveChangesAsync();
     return Results.Created($"/transactions/{transaction.Id}", transaction);
-});
+}).RequireAuthorization();
 
 // POST: bulk create a new transactions
 app.MapPost("api/transactions/bulk", async (ICollection<TransferTransaction> transactions, TransactionStoreContext db, IValidator<TransferTransaction> validator) =>
@@ -172,6 +202,6 @@ app.MapPut("api/transactions/{id}/state/{state}", async (Guid id, TransactionSta
 
     await db.SaveChangesAsync();
     return Results.NoContent();
-});
+}).RequireAuthorization();
 
 await app.RunAsync();

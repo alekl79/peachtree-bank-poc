@@ -1,10 +1,19 @@
 // src/components/TransactionList.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Transaction, fetchTransactions } from '../api';
-import { Box, Card, CardContent, Typography, Button, Stack, Divider, Input, Select, Option, IconButton } from '@mui/joy';
+import { Box, Typography, Button, Stack, Divider, Input, Select, Option, IconButton, Tooltip } from '@mui/joy';
+import CloseIcon from '@mui/icons-material/Close';
 
 interface TransactionListProps {
   onSelect: (transaction: Transaction) => void;
+  currentPage: number;
+  onPageChange: (page: number) => void;
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
+  sortField: string;
+  onSortFieldChange: (field: string) => void;
+  sortOrder: 'asc' | 'desc';
+  onSortOrderChange: (order: 'asc' | 'desc') => void;
 }
 
 // Define sort options mapping
@@ -19,16 +28,55 @@ const sortOptions: Record<string, SortOption> = {
   amount: { field: 'amount', label: 'AMOUNT' }
 };
 
+const getStateColor = (state: string) => {
+  switch (state) {
+    case 'Send':
+      return '#2196F3'; // Blue
+    case 'Received':
+      return '#4CAF50'; // Green
+    case 'Paid':
+      return '#9C27B0'; // Purple
+    default:
+      return '#757575'; // Grey
+  }
+};
+
 const PAGE_SIZE = 10;
 
-const TransactionList: React.FC<TransactionListProps> = ({ onSelect }) => {
+const TransactionList: React.FC<TransactionListProps> = ({ 
+  onSelect, 
+  currentPage, 
+  onPageChange,
+  searchQuery,
+  onSearchChange,
+  sortField,
+  onSortFieldChange,
+  sortOrder,
+  onSortOrderChange
+}) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [sortField, setSortField] = useState<string>('created');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [page, setPage] = useState<number>(1);
   const [totalCount, setTotalCount] = useState<number>(0);
+  
+  const loadTransactions = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetchTransactions(
+        searchQuery,
+        currentPage,
+        PAGE_SIZE,
+        sortField,
+        sortOrder
+      );
+      
+      setTransactions(response.data);
+      setTotalCount(response.totalPages * response.pageSize);
+    } catch (error) {
+      console.error('Error fetching transactions', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [searchQuery, currentPage, sortField, sortOrder]);
   
   // Debounce search to avoid too many API calls
   useEffect(() => {
@@ -37,48 +85,30 @@ const TransactionList: React.FC<TransactionListProps> = ({ onSelect }) => {
     }, 500); // 500ms delay after typing stops
     
     return () => clearTimeout(timer);
-  }, [searchQuery, sortField, sortOrder, page]);
-
-  const loadTransactions = async () => {
-    setLoading(true);
-    try {
-      const response = await fetchTransactions(
-        searchQuery,
-        page,
-        PAGE_SIZE,
-        sortField,
-        sortOrder
-      );
-      
-      setTransactions(response.data);
-      setPage(response.currentPage);
-      setTotalCount(response.totalPages * response.pageSize);
-    } catch (error) {
-      console.error('Error fetching transactions', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [loadTransactions]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-    setPage(1); // Reset to first page on new search
+    onSearchChange(e.target.value);
   };
 
   const handleSortFieldChange = (value: string | null) => {
     if (value) {
-      setSortField(value);
-      setPage(1); // Reset to first page on sort change
+      onSortFieldChange(value);
     }
   };
 
   const toggleSortOrder = () => {
-    setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
-    setPage(1); // Reset to first page on sort change
+    onSortOrderChange(sortOrder === 'asc' ? 'desc' : 'asc');
   };
 
   const handlePageChange = (_event: React.MouseEvent | null, newPage: number) => {
-    setPage(newPage);
+    onPageChange(newPage);
+  };
+
+  const handleResetFilters = () => {
+    onSearchChange('');
+    onSortFieldChange('created');
+    onSortOrderChange('desc');
   };
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
@@ -87,12 +117,27 @@ const TransactionList: React.FC<TransactionListProps> = ({ onSelect }) => {
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Search and sort controls */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-        <Input 
-          placeholder="Search by typing..." 
-          value={searchQuery}
-          onChange={handleSearchChange}
-          sx={{ width: '60%' }} 
-        />
+        <Box sx={{ display: 'flex', alignItems: 'center', width: '60%' }}>
+          <Input 
+            placeholder="Search by typing..." 
+            value={searchQuery}
+            onChange={handleSearchChange}
+            sx={{ flexGrow: 1 }}
+          />
+          {(searchQuery || sortField !== 'created' || sortOrder !== 'desc') && (
+            <Tooltip title="Reset filters" placement="right">
+              <IconButton
+                variant="plain"
+                color="neutral"
+                onClick={handleResetFilters}
+                sx={{ ml: 1 }}
+                size="sm"
+              >
+                <CloseIcon />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Box>
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <Typography level="body-sm" sx={{ mr: 1 }}>Sort by</Typography>
           <Select 
@@ -179,14 +224,27 @@ const TransactionList: React.FC<TransactionListProps> = ({ onSelect }) => {
                 sx={{ 
                   display: 'flex', 
                   p: 1.5, 
-                  borderLeft: '4px solid', 
-                  borderLeftColor: 'primary.main',
+                  borderLeft: `4px solid ${getStateColor(tx.state)}`,
                   '&:hover': { bgcolor: 'background.level1', cursor: 'pointer' }
                 }}
                 onClick={() => onSelect(tx)}
               >
                 <Box sx={{ width: '15%' }}>
-                  <Typography level="body-sm">{new Date(tx.created).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</Typography>
+                  <Tooltip 
+                    title={new Date(tx.created).toLocaleString('en-US', { 
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: false
+                    })}
+                    placement="top"
+                  >
+                    <Typography level="body-sm">
+                      {new Date(tx.created).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </Typography>
+                  </Tooltip>
                 </Box>
                 <Box sx={{ width: '15%', display: 'flex', justifyContent: 'center' }}>
                   {/* Icon placeholder */}
@@ -194,8 +252,8 @@ const TransactionList: React.FC<TransactionListProps> = ({ onSelect }) => {
                 </Box>
                 <Box sx={{ width: '50%' }}>
                   <Typography level="body-md">{tx.toAccount}</Typography>
-                  <Typography level="body-xs" sx={{ color: 'text.secondary' }}>
-                    {tx.state === 'completed' ? 'Card Payment' : 'Transaction'}
+                  <Typography level="body-xs" sx={{ color: getStateColor(tx.state) }}>
+                    {tx.state}
                   </Typography>
                 </Box>
                 <Box sx={{ width: '20%', textAlign: 'right' }}>
@@ -228,8 +286,8 @@ const TransactionList: React.FC<TransactionListProps> = ({ onSelect }) => {
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Button 
               variant="plain" 
-              disabled={page === 1} 
-              onClick={() => handlePageChange(null, page - 1)}
+              disabled={currentPage === 1} 
+              onClick={() => handlePageChange(null, currentPage - 1)}
               sx={{ minWidth: 'auto' }}
             >
               Previous
@@ -237,14 +295,14 @@ const TransactionList: React.FC<TransactionListProps> = ({ onSelect }) => {
             
             <Box sx={{ mx: 2, display: 'flex', alignItems: 'center' }}>
               <Typography level="body-sm">
-                Page {page} of {totalPages}
+                Page {currentPage} of {totalPages}
               </Typography>
             </Box>
             
             <Button 
               variant="plain" 
-              disabled={page === totalPages} 
-              onClick={() => handlePageChange(null, page + 1)}
+              disabled={currentPage === totalPages} 
+              onClick={() => handlePageChange(null, currentPage + 1)}
               sx={{ minWidth: 'auto' }}
             >
               Next

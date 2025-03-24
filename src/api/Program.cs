@@ -4,6 +4,7 @@ using MicroElements.Swashbuckle.FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using peachtree_bank_poc;
 using System.Linq.Dynamic.Core;
 using System.Text.Json.Serialization;
@@ -40,10 +41,44 @@ builder.Services.AddCors(options =>
               .AllowAnyHeader();
     });
 });
+builder.Services.AddHealthChecks();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SupportNonNullableReferenceTypes();
+
+    // Add JWT Authentication to Swagger
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Description = "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+
+    // Add API information
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Peachtree Bank API",
+        Version = "v1",
+        Description = "API for Peachtree Bank transaction management"
+    });
 });
 builder.Services.AddFluentValidationRulesToSwagger();
 
@@ -73,20 +108,20 @@ using (var scope = app.Services.CreateScope())
     await db.Database.EnsureCreatedAsync();
 }
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
+// Normally, we would only enable Swagger in Development/Test envs. But for this Poc, it is okay.
+//if (app.Environment.IsDevelopment())
+//{
+app.UseSwagger();
     app.UseSwaggerUI();
     app.MapOpenApi();
-}
+//}
 app.UseCors("AllowPeachtreeApp");
 app.UseCors("AllowVercel");
 app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
-
+app.MapHealthChecks("/hc");
 // GET a transaction details by Id
 app.MapGet("api/transactions/{id}", async (Guid id, TransactionStoreContext db) =>
     await db.Transactions.FindAsync(id) is TransferTransaction transaction

@@ -93,27 +93,31 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+app.UseCors("AllowPeachtreeApp");
 
+app.Logger.LogInformation("Configured cors for: {Url}", corsDomain);
 // Ensure the database is created at startup
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<TransactionStoreContext>();
     await db.Database.EnsureCreatedAsync();
 }
-
+app.Logger.LogInformation("Database configured");
 // Normally, we would only enable Swagger in Development/Test envs. But for this Poc, it is okay.
 //if (app.Environment.IsDevelopment())
 //{
-    app.UseSwagger();
+app.UseSwagger();
     app.UseSwaggerUI();
     app.MapOpenApi();
 //}
-app.UseCors("AllowPeachtreeApp");
+
 app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapHealthChecks("/hc");
+
+app.Logger.LogInformation("Health check endpoint enabled");
 // GET a transaction details by Id
 app.MapGet("api/transactions/{id}", async (Guid id, TransactionStoreContext db) =>
     await db.Transactions.FindAsync(id) is TransferTransaction transaction
@@ -230,5 +234,5 @@ app.MapPut("api/transactions/{id}/state/{state}", async (Guid id, TransactionSta
     await db.SaveChangesAsync();
     return Results.NoContent();
 }).RequireAuthorization();
-
+app.Logger.LogInformation("Endpoints configured. Api Started.");
 await app.RunAsync();
